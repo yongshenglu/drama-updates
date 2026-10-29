@@ -1,0 +1,35 @@
+# Generated output is rebuilt by the workflow on every run.
+output/
+
+# Local scratch from selector discovery — never publish.
+.scratch/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Discovery probes (kept out of the repo; the collectors are the real code).
+discovery.py
+probe_*.py
+dom_explore.py
+dump_cards.py
+_test_collectors.py
+an_*.txt
+*_ctx.txt
+*_titles.txt
+*_report.txt
+*_req.json
+*_initial.json
+*_samples.txt
+*_keys.txt
+*_item*.txt
+*_fields.txt
+*_albstate.txt
+*_segments.txt
+*_segments
+*_segments.json
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

@@ -1,0 +1,68 @@
+name: collect-and-deploy
+
+on:
+  schedule:
+    # 01:07 UTC = 09:07 Beijing. Off the top of the hour on purpose —
+    # the :00 slot is heavily contended and gets delayed.
+    - cron: "7 1 * * *"
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      # iQIYI and Mango TV render their lists client-side, so they need a real
+      # browser. Chrome for Testing is pinned here because Ubuntu's chromium
+      # package is a snap stub that does not run on Actions runners.
+      - name: Install Chromium
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libnss3 libatk-bridge2.0-0 libgtk-3-0 libgbm1 libxkbcommon0 \
+            libasound2t64 libxcomposite1 libxdamage1 libxrandr2 \
+            libcups2 libdrm2 libpango-1.0-0 libcairo2 fonts-noto-cjk
+          npx --yes @puppeteer/browsers install chrome@stable
+          echo "BROWSER_PATH=$(find "$PWD/chrome" -name chrome -type f | head -1)" >> "$GITHUB_ENV"
+
+      - name: Collect drama updates
+        env:
+          PYTHONUTF8: "1"
+        run: python main.py --out output/index.html --json
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: output
+
+  deploy:
+    needs: collect
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
