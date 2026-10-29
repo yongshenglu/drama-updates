@@ -27,6 +27,7 @@ class Drama:
     publish_time: str = ""    # "YYYY-MM-DD HH:MM:SS" when the platform exposes it
     schedule: str = ""        # free-text update schedule, e.g. "会员每日20点更新2集"
     tags: list[str] = field(default_factory=list)
+    actors: list[str] = field(default_factory=list)  # leading cast, best-effort
     has_update: bool = False  # platform flags this item as recently updated
 
     # --- derived -------------------------------------------------------

@@ -46,14 +46,13 @@ def _card(d: Drama, color: str) -> str:
     sched = _esc(d.schedule)
     kind = _esc(d.kind)
     pub = _esc(d.publish_time)
-    url = _esc(d.url)
 
     today_badge = '<span class="today">今日更新</span>' if d.updated_today else ""
-    link = (f'<a class="go" href="{url}" target="_blank" rel="noopener">播放</a>'
-            if url else "")
 
     sub_html = f'<p class="sub">{sub}</p>' if sub else ""
     meta = []
+    if d.actors:
+        meta.append(f'<span class="meta-item cast">主演 {", ".join(_esc(a) for a in d.actors)}</span>')
     if sched:
         meta.append(f'<span class="meta-item">🗓 {sched}</span>')
     if pub:
@@ -74,7 +73,6 @@ def _card(d: Drama, color: str) -> str:
       </div>
       {sub_html}
       {meta_html}
-      {link}
     </article>"""
 
 
@@ -258,12 +256,7 @@ details:not([open]) .phead h2, details:not([open]) .pstats {{ opacity:.75; }}
 .sub {{ margin:9px 0 0; font-size:13px; color:var(--fg2); }}
 .meta {{ display:flex; gap:10px; flex-wrap:wrap; margin-top:8px; }}
 .meta-item {{ font-size:12px; color:var(--fg3); }}
-.go {{
-  display:inline-block; margin-top:11px; font-size:13px; font-weight:600;
-  color:var(--acc); border:1px solid var(--line); border-radius:9px;
-  padding:6px 14px; transition:.15s;
-}}
-.go:hover {{ background:var(--acc); color:#04121f; border-color:var(--acc); }}
+.meta-item.cast {{ color:var(--fg2); }}
 
 footer {{
   border-top:1px solid var(--line); margin-top:14px; padding:18px 16px 30px;
@@ -301,6 +294,7 @@ footer p {{ margin:3px 0; }}
 <footer>
   <p>数据来自各平台公开页面，仅供个人追剧参考</p>
   <p>仅腾讯视频提供精确到集的更新时间，其余平台展示平台标记的更新状态</p>
+  <p>优酷的公开页面不提供演职员信息，因此该平台不显示主演</p>
   <p>生成时间 {ts.strftime("%Y-%m-%d %H:%M:%S")}</p>
 </footer>
 

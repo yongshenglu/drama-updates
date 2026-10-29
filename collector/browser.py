@@ -16,6 +16,7 @@ from __future__ import annotations
 import glob
 import os
 import shutil
+import socket
 import tempfile
 import time
 from pathlib import Path
@@ -77,6 +78,15 @@ class BrowserUnavailable(RuntimeError):
 def _page(browser_path: str):
     from DrissionPage import ChromiumOptions, ChromiumPage
 
+    # Reuse an already-running debug browser when one is listening. A live
+    # session owns the port, so launching a second one makes the CDP handshake
+    # 404. If nothing is listening the launch path takes over as usual.
+    port = os.environ.get("BROWSER_PORT", "9611")
+    if _debug_port_busy(port):
+        co = ChromiumOptions()
+        co.set_local_port(port)
+        return ChromiumPage(co)
+
     co = ChromiumOptions()
     co.set_browser_path(browser_path)
     co.headless()
@@ -89,9 +99,17 @@ def _page(browser_path: str):
     co.set_user_agent(USER_AGENT)
     # Pin an uncommon debug port and a private profile: user Chrome never binds
     # one of these, and a leftover collector instance cannot poison a new run.
-    co.set_local_port(os.environ.get("BROWSER_PORT", "9611"))
+    co.set_local_port(port)
     co.set_user_data_path(str(Path(tempfile.gettempdir()) / "drama-collector-profile"))
     return ChromiumPage(co)
+
+
+def _debug_port_busy(port: str) -> bool:
+    try:
+        with socket.create_connection(("127.0.0.1", int(port)), timeout=0.4):
+            return True
+    except OSError:
+        return False
 
 
 def _shared_page():

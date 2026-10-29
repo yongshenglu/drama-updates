@@ -11,6 +11,7 @@ than scraping markup. Field mapping was confirmed against a live capture:
 from __future__ import annotations
 
 import json
+import re
 from typing import Iterator
 
 from .http import USER_AGENT, http_get
@@ -112,6 +113,7 @@ def collect() -> list[Drama]:
             publish_time=(p.get("epsode_pubtime") or "").strip(),
             schedule=(p.get("holly_online_time") or "").strip(),
             tags=tags,
+            actors=_actors_of(p),
             url=f"https://v.qq.com/x/cover/{cid}.html",
             has_update=bool(p.get("episode_updated")),
         ))
@@ -123,6 +125,53 @@ def _richness(p: dict) -> int:
     return sum(bool(str(p.get(k) or "").strip()) for k in
                ("episode_updated", "epsode_pubtime", "holly_online_time",
                 "mz_sub_title", "mz_type_name"))
+
+
+# "actor_detail:{actor_name:\"于和伟\" source_type:ACTOR_SOURCE_LEADING_ACTOR}"
+_ACTOR_RE = re.compile(r'actor_name\s*:\s*"([^"]+)"')
+
+# topic_label is "于和伟|王劲松|热血战争" -- names first, genre words last.
+_GENRE_WORDS = (
+    "爱情", "悬疑", "古装", "都市", "青春", "家庭", "历史", "战争", "谍战",
+    "权谋", "仙侠", "武侠", "奇幻", "冒险", "动作", "犯罪", "剧情", "情感",
+    "喜剧", "职场", "军旅", "科幻", "年代", "革命", "偶像", "言情", "虐恋",
+    "甜宠", "逆袭", "爽剧", "治愈", "成长", "现实", "主旋律", "史诗", "革命剧",
+)
+
+
+def _is_genre(word: str) -> bool:
+    return any(g in word for g in _GENRE_WORDS) or len(word) > 4
+
+
+def _actors_of(p: dict) -> list[str]:
+    """Prefer the structured leading-actor field; fall back to topic_label.
+
+    label_info only names the top-billed actor, while topic_label lists a few
+    names followed by genre words, so the fallback keeps the leading names.
+    """
+    names = _ACTOR_RE.findall(str(p.get("label_info") or ""))
+    if names:
+        return _dedupe(names)
+
+    topic = str(p.get("topic_label") or "")
+    if not topic:
+        return []
+    parts = [x.strip() for x in re.split(r"[|·、/\s]+", topic) if x.strip()]
+    # Names come before the genre words; stop at the first genre-looking token.
+    leading = []
+    for part in parts:
+        if _is_genre(part):
+            break
+        leading.append(part)
+    return _dedupe(leading)
+
+
+def _dedupe(names: list[str]) -> list[str]:
+    seen: list[str] = []
+    for n in names:
+        if n and n not in seen:
+            seen.append(n)
+    return seen
 
 
 def iter_dramas() -> Iterator[Drama]:

@@ -99,6 +99,7 @@ def collect() -> list[Drama]:
             title=title,
             episode_text=badge_text,
             subtitle=_subtitle_of(card),
+            actors=_actors_of(card),
             url=f"https://www.iqiyi.com/a_{album_id}.html" if album_id else "",
             has_update=bool(badge_text),
         ))
@@ -108,6 +109,18 @@ def collect() -> list[Drama]:
 def _subtitle_of(card: Node) -> str:
     el = card.find_first(lambda n: n.get("data-ai-entity") in SUBTITLE_ENTITIES)
     return el.text_content().strip() if el else ""
+
+
+def _actors_of(card: Node) -> list[str]:
+    """Each cast member is its own span, e.g. class ``filmFeed_actName__x``."""
+    names = []
+    for n in card.iter():
+        if "actName" not in n.classes():
+            continue
+        t = n.text_content().strip()
+        if t and t not in names:
+            names.append(t)
+    return names
 
 
 def _nearest_href(card: Node) -> str:
